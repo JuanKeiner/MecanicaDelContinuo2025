@@ -3,50 +3,77 @@ import matplotlib.pyplot as plt
 import numpy as np
 from itertools import combinations
 from itertools import permutations
+from scipy.integrate import solve_ivp
+from matplotlib.animation import FuncAnimation
+from matplotlib.patches import Polygon
 
 matplotlib.use('TkAgg')
 
 
 # FUNCIONES
-def graficar(nodos, conectividades, masas, orientacion_triangulos):
-    x_vals = [nodo[0] for nodo in nodos]
-    y_vals = [nodo[1] for nodo in nodos]
+def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, intervalo=50):
+    t = solucion.t
+    Y = solucion.y
+    X_t = Y[:2 * len(nodos), :].T.reshape(len(t), len(nodos), 2)
     escalado = [m * 4 for m in masas]
 
-    # Crear el gráfico
-    plt.figure(figsize=(6, 6))
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.set_xlim(min(x for x, y in nodos) - 5, max(x for x, y in nodos) + 5)
+    ax.set_ylim(min(y for x, y in nodos) - 5, max(y for x, y in nodos) + 5)
+    ax.set_aspect('equal')
+    ax.set_title('Estructura de Barras')
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.grid(True)
 
-    # Graficar conexiones entre nodos
-    for ni, nj, r in conectividades:
-        x_line = [nodos[ni][0], nodos[nj][0]]
-        y_line = [nodos[ni][1], nodos[nj][1]]
-        plt.plot(x_line, y_line, 'k-', linewidth=1)  # Líneas negras
+    # Conectividades
+    lineas = [ax.plot([], [], 'k-', lw=1)[0] for _ in conectividades]
 
-    # Pintar las áreas de los triángulos
+    # Nodos
+    puntos = ax.scatter([n[0] for n in nodos], [n[1] for n in nodos], s=escalado, color='blue', label='Nodos')
+
+    # Etiquetas
+    etiquetas = [ax.text(nodos[i][0], nodos[i][1], str(i + 1), fontsize=12, color='red', ha='right')
+                 for i in range(len(nodos))]
+
+    # Parches para triángulos
+    triangulos = []
     for a, b, c in orientacion_triangulos:
-        x_tri = [nodos[a][0], nodos[b][0], nodos[c][0]]
-        y_tri = [nodos[a][1], nodos[b][1], nodos[c][1]]
+        coords_ini = [nodos[a], nodos[b], nodos[c]]
+        area = obtener_area_triangulo(a, b, c, nodos)
+        patch = Polygon(coords_ini, closed=True, facecolor='lightblue', edgecolor='blue', alpha=0.5)
+        ax.add_patch(patch)
+        triangulos.append(patch)
 
-        if (obtener_area_tringulo(a, b, c, nodos) > 0):
-            plt.fill(x_tri, y_tri, color='lightblue', alpha=0.6, edgecolor='blue')
-        else:
-            plt.fill(x_tri, y_tri, color='red', alpha=0.3, edgecolor='blue')
+    def update(frame):
+        coordenadas = X_t[frame]
+        x, y = coordenadas[:, 0], coordenadas[:, 1]
 
-    # Graficar nodos
-    plt.scatter(x_vals, y_vals, s=escalado, color='blue', label='Nodos')
+        # Nodos
+        puntos.set_offsets(coordenadas)
 
-    # Etiquetas de nodos
-    for i, (x, y) in enumerate(nodos):
-        plt.text(x, y, str(i + 1), fontsize=15, ha='right', color='red')
+        # Barras
+        for idx, (i, j, _) in enumerate(conectividades):
+            lineas[idx].set_data([x[i], x[j]], [y[i], y[j]])
 
-    # Configuración del gráfico
-    plt.xlabel('X')
-    plt.ylabel('Y')
-    plt.title('Estructura de Barras')
-    plt.grid(True)
-    plt.legend()
+        # Etiquetas
+        for i, etiqueta in enumerate(etiquetas):
+            etiqueta.set_position((x[i], y[i]))
 
-    # Mostrar el gráfico
+        # Triángulos actualizados
+        for i, (a, b, c) in enumerate(orientacion_triangulos):
+            tri_coords = [coordenadas[a], coordenadas[b], coordenadas[c]]
+            area = obtener_area_triangulo(a, b, c, coordenadas)
+            triangulos[i].set_xy(tri_coords)
+            triangulos[i].set_facecolor('lightblue' if area > 0 else 'red')
+            triangulos[i].set_alpha(0.6 if area > 0 else 0.7)
+
+        return lineas + etiquetas + triangulos + [puntos]
+
+    duracion_ms = solucion.t[-1] * 1000  # convertir segundos a milisegundos
+    intervalo_ajustado = duracion_ms / len(solucion.t)
+
+    ani = FuncAnimation(fig, update, frames=len(solucion.t), interval=12, blit=True)
     plt.show()
 
 
@@ -61,7 +88,7 @@ def obtener_masas(nodos, conectividades):
     return masas.tolist()
 
 
-def obtener_area_tringulo(a, b, c, nodos):
+def obtener_area_triangulo(a, b, c, nodos):
     A = np.array([*nodos[a], 0])
     B = np.array([*nodos[b], 0])
     C = np.array([*nodos[c], 0])
@@ -85,7 +112,7 @@ def obtener_orientacion_triangulos(nodos, conectividades):
     for t in triangulos:
         # combinaciones
         for a, b, c in permutations(t):
-            if (obtener_area_tringulo(a, b, c, nodos) > 0):
+            if (obtener_area_triangulo(a, b, c, nodos) > 0):
                 triangulos_orientados.add((a, b, c))
                 break;
 
@@ -95,7 +122,7 @@ def obtener_orientacion_triangulos(nodos, conectividades):
 # DATOS
 rho = 0.5
 E = 50
-A = 0.05
+Area = 0.05
 # x, y
 nodos = [(10, 0),
          (15, 0),
@@ -119,7 +146,7 @@ conectividades = [(0, 4, 3),
                   (4, 7, 9),
                   (7, 2, 0.3)]
 masas = obtener_masas(nodos, conectividades)
-orietacion_triangulos = obtener_orientacion_triangulos(nodos, conectividades)
+orientacion_triangulos = obtener_orientacion_triangulos(nodos, conectividades)
 # posiciones iniciales + velocidades iniciales
 Y0 = [coordenadas for nodo in nodos for coordenadas in nodo] + [0] * (2 * len(nodos))
 intervalo = (0, 50)
@@ -135,12 +162,6 @@ def P(t):
 
 
 # PROCESO
-def obtener_rigidez(nodos, i, j):
-    L = np.linalg.norm(np.array(nodos[i]) - np.array(nodos[j]))
-
-    return E*A/L
-
-
 def fuerza(x_i, x_j, x0_i, x0_j, k_ij):
     norm_x0 = np.linalg.norm(x0_j - x0_i)
     norm_x = np.linalg.norm(x_j - x_i)
@@ -153,16 +174,27 @@ def sistema_ecuaciones(t, Y):
     X = Y[:len(Y) // 2].reshape(-1, 2)
     V = Y[len(Y) // 2:].reshape(-1, 2)
     A = np.zeros_like(X)
+    F = []
 
-    # for i, j, _ in conectividades:
-    #     k_ij = E*A/(np.linalg.norm(np.array(nodos[i]) - np.array(nodos[j])))
-    #     F = fuerza(X[i], X[j], nodos[i], nodos[j], k_ij)
-    #     acel [i] += F / m
-    #     acel [j] -= F / m
+    # Calcula la fuerza neta en cada nodo
+    for i, j, _ in conectividades:
+        k_ij = E*Area/(np.linalg.norm(np.array(nodos[i]) - np.array(nodos[j])))
+        F_ij = fuerza(X[i], X[j], np.array(nodos[i]), np.array(nodos[j]), k_ij)
+        F.append(F_ij)
 
-    print(X)
-    print(V)
-    print(A)
+        A[i] += F_ij / masas[i]
+        A[j] -= F_ij / masas[j]
 
-sistema_ecuaciones(t, Y0)
-graficar(nodos, conectividades, masas, orietacion_triangulos)
+    # Aplica Peso
+    A[5][1] -= P(t)
+
+    # Condiciones de borde
+    V[0] = [0, 0]
+    V[1][1] = 0
+    A[0] = [0, 0]
+    A[1][1] = 0
+
+    return np.concatenate((V, A)).flatten()
+
+Y = solve_ivp(sistema_ecuaciones, intervalo, Y0, t_eval=t)
+animar(Y, nodos, conectividades, masas, orientacion_triangulos)
