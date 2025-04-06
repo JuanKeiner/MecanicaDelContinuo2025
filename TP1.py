@@ -135,6 +135,12 @@ def P(t):
 
 
 # PROCESO
+def obtener_rigidez(nodos, i, j):
+    L = np.linalg.norm(np.array(nodos[i]) - np.array(nodos[j]))
+
+    return E*A/L
+
+
 def fuerza(x_i, x_j, x0_i, x0_j, k_ij):
     norm_x0 = np.linalg.norm(x0_j - x0_i)
     norm_x = np.linalg.norm(x_j - x_i)
@@ -148,8 +154,9 @@ def sistema_ecuaciones(t, Y):
     V = Y[len(Y) // 2:].reshape(-1, 2)
     A = np.zeros_like(X)
 
-    # for i, j, k in conectividades:
-    #     F = fuerza(X[i], X[j], nodos[i], nodos[j], k)
+    # for i, j, _ in conectividades:
+    #     k_ij = E*A/(np.linalg.norm(np.array(nodos[i]) - np.array(nodos[j])))
+    #     F = fuerza(X[i], X[j], nodos[i], nodos[j], k_ij)
     #     acel [i] += F / m
     #     acel [j] -= F / m
 
