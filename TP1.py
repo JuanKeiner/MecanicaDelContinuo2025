@@ -17,7 +17,8 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, inter
     X_t = Y[:2 * len(nodos), :].T.reshape(len(t), len(nodos), 2)
     escalado = [m * 8 for m in masas]
 
-    fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(12, 6))
+    fig, axes = plt.subplots(2, 3, figsize=(12, 8))
+    ax1, ax2, ax3, ax4, ax5, ax6 = axes.ravel()
 
     # Estructura de barras
     ax1.set_xlim(min(x for x, y in nodos) - 5, max(x for x, y in nodos) + 5)
@@ -30,7 +31,6 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, inter
 
     colores_barra = ['black'] * len(conectividades)
     colores_barra[barra_a] = 'magenta'
-    # lineas = [ax1.plot([], [], '-k', lw=1)[0] for _ in conectividades]
     lineas = [ax1.plot([], [], '-k', lw=1.5, color=colores_barra[i])[0] for i in range(len(conectividades))]
 
     colores = ['blue'] * len(nodos)
@@ -60,7 +60,6 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, inter
     ax2.plot(t, P(t), color='black')
     Pt, = ax2.plot([], [], 'mo', markersize=10)
 
-
     # Evolucion nodo b
     xt = []
     yt = []
@@ -71,34 +70,39 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, inter
         xt.append(X_t[ii][nodo_b][0])
 
     ax3.set_aspect('auto')
-    ax3.set_title(f'Nodo_{nodo_b + 1}(t)')
+    ax3.set_title(f'Nodo {nodo_b + 1} t vs x')
     ax3.set_xlabel('t')
     ax3.set_ylabel('x')
     ax3.grid(True)
     ax3.plot(ttt, xt, color='black')
+    xt_b, = ax3.plot([], [], 'mo', markersize=10)
 
-    # for ii, tt in enumerate(solucion.t):
-    #     yt.append(X_t[ii][nodo_b][1])
-    #
-    # ax4.set_aspect('auto')
-    # ax4.set_title(f'Nodo_{nodo_b + 1}(t)')
-    # ax4.set_xlabel('t')
-    # ax4.set_ylabel('y')
-    # ax4.grid(True)
-    # ax4.plot(ttt, yt, color='black')
-    #
-    # ax5.set_aspect('auto')
-    # ax5.set_title(f'Nodo_{nodo_b + 1}(t)')
-    # ax5.set_xlabel('x')
-    # ax5.set_ylabel('y')
-    # ax5.grid(True)
-    # ax5.plot(xt, yt, color='black')
-    #
-    # ax6.set_aspect('auto')
-    # ax6.set_title(f'Nodo_{nodo_b + 1}(t)')
-    # ax6.set_xlabel('x')
-    # ax6.set_ylabel('y')
-    # ax6.grid(True)
+    for ii, tt in enumerate(solucion.t):
+        yt.append(X_t[ii][nodo_b][1])
+
+    ax4.set_aspect('auto')
+    ax4.set_title(f'Nodo {nodo_b + 1} t vs y')
+    ax4.set_xlabel('t')
+    ax4.set_ylabel('y')
+    ax4.grid(True)
+    ax4.plot(ttt, yt, color='black')
+    yt_b, = ax4.plot([], [], 'mo', markersize=10)
+
+    ax5.set_aspect('auto')
+    ax5.set_title(f'Nodo {nodo_b + 1} x(t) vs y(t)')
+    ax5.set_xlabel('x')
+    ax5.set_ylabel('y')
+    ax5.grid(True)
+    ax5.plot(xt, yt, color='black')
+    xyt_b, = ax5.plot([], [], 'mo', markersize=10)
+
+    # Evolucion barra a
+    ax6.set_aspect('auto')
+    ax6.set_title(f'Tensión Barra {barra_a}')
+    ax6.set_xlabel('x')
+    ax6.set_ylabel('y')
+    ax6.grid(True)
+
     # ax6.plot(xt, yt, color='black')
 
     def update(frame):
@@ -130,9 +134,14 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, inter
         # Particula
         Pt.set_data([t[frame]], [P(t[frame])])
 
-        return lineas + etiquetas + triangulos + [puntos, tiempo_text, Pt]
+        # Nodo b
+        xt_b.set_data([t[frame]], [X_t[frame][nodo_b][0]])
+        yt_b.set_data([t[frame]], [X_t[frame][nodo_b][1]])
+        xyt_b.set_data([X_t[frame][nodo_b][0]], [X_t[frame][nodo_b][1]])
 
-    ani = FuncAnimation(fig, update, frames=len(t), interval=intervalo, blit=True)
+        return lineas + etiquetas + triangulos + [puntos, tiempo_text, Pt, xt_b, yt_b, xyt_b]
+
+    ani = FuncAnimation(fig, update, frames=len(t), interval=intervalo, blit=True, repeat=False)
     plt.tight_layout()
     plt.show()
 
@@ -143,7 +152,7 @@ def obtener_masas(nodos, conectividades, rho):
     for i in range(len(nodos)):
         for ni, nj in conectividades:
             if (ni == i or nj == i):
-                masas[i] += ((np.linalg.norm(np.array(nodos[ni]) - np.array(nodos[nj])) * rho ) / 2)
+                masas[i] += ((np.linalg.norm(np.array(nodos[ni]) - np.array(nodos[nj])) * rho) / 2)
 
     return masas.tolist()
 
@@ -157,7 +166,7 @@ def obtener_area_triangulo(a, b, c, nodos):
     AC = C - A
 
     z = np.cross(AB, AC)[2]
-    return z/2
+    return z / 2
 
 
 def obtener_orientacion_triangulos(nodos, conectividades):
@@ -165,7 +174,8 @@ def obtener_orientacion_triangulos(nodos, conectividades):
 
     triangulos = set()
     for a, b, c in combinations(range(len(nodos)), 3):
-        if ((a, b) in aristas or (b, a) in aristas) and ((b, c) in aristas or (c, b) in aristas) and ((a, c) in aristas or (c, a) in aristas):
+        if ((a, b) in aristas or (b, a) in aristas) and ((b, c) in aristas or (c, b) in aristas) and (
+                (a, c) in aristas or (c, a) in aristas):
             triangulos.add(tuple(sorted((a, b, c))))
 
     triangulos_orientados = set()
@@ -183,10 +193,11 @@ def obtener_rigidez(nodos, conectividades, E, A):
     k = []
 
     for i, j in conectividades:
-        k_ij = E*A/(np.linalg.norm(np.array(nodos[i]) - np.array(nodos[j])))
+        k_ij = E * A / (np.linalg.norm(np.array(nodos[i]) - np.array(nodos[j])))
         k.append(k_ij)
 
     return k
+
 
 # DATOS
 rho = 0.5
@@ -221,11 +232,15 @@ K = obtener_rigidez(nodos, conectividades, E, A)
 Y0 = [coordenadas for nodo in nodos for coordenadas in nodo] + [0] * (2 * len(nodos))
 intervalo = (0, 50)
 t = np.linspace(*intervalo, 1000)
-nodo_b = 7 # nodo 8
-barra_a = 9 # barra 10
+nodo_b = 7  # nodo 8
+barra_a = 9  # barra 10
 pequeñas = True
+
+
 def P(t):
-    return 0.1 + 0*t
+    return 0.1 + 0 * t
+
+
 # def P(t):
 #     A = 0.5
 #     f = 0.05
@@ -234,19 +249,21 @@ def P(t):
 #     return A * np.sin(2 * np.pi * f * t + phi)
 
 # PROCESO
-def fuerza_pequeñas_deformaciones(x_i, x_j, x0_i, x0_j, k_ij):
-    norm_x0 = np.linalg.norm(x0_j - x0_i)
-    norm_x = np.linalg.norm(x_j - x_i)
-    factor = 1 - (norm_x0 / norm_x) if norm_x != 0 else 0
 
-    return k_ij * factor * (x_j - x_i)
+
+def fuerza_pequeñas_deformaciones(x_i, x_j, x0_i, x0_j, k_ij):
+    norm_0 = np.linalg.norm(x0_j - x0_i)
+    norm = np.linalg.norm(x_j - x_i)
+
+    return k_ij * (1 - (norm_0 / norm)) * (x_j - x_i)
+
 
 def fuerza_grandes_deformaciones(x_i, x_j, x0_i, x0_j, k_ij):
-    norm_x0 = np.linalg.norm(x0_j - x0_i)
-    norm_x = np.linalg.norm(x_j - x_i)
-    factor = 1 - (norm_x0 / norm_x) if norm_x != 0 else 0
+    norm_0 = np.linalg.norm(x0_j - x0_i)
+    norm = np.linalg.norm(x_j - x_i)
 
-    return k_ij * factor * (x_j - x_i)
+    return k_ij * ((norm / norm_0) - 1) * (x0_j - x0_i)
+
 
 def sistema_ecuaciones(t, Y):
     Y = np.array(Y)
@@ -283,6 +300,7 @@ def sistema_ecuaciones(t, Y):
     A[1][1] = 0
 
     return np.concatenate((V, A)).flatten()
+
 
 Y = solve_ivp(sistema_ecuaciones, intervalo, Y0, t_eval=t)
 animar(Y, nodos, conectividades, masas, orientacion_triangulos)
