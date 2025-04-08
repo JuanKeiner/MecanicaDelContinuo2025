@@ -11,39 +11,119 @@ matplotlib.use('TkAgg')
 
 
 # FUNCIONES
-def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, intervalo=50):
+# def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, intervalo=4):
+#     t = solucion.t
+#     Y = solucion.y
+#     X_t = Y[:2 * len(nodos), :].T.reshape(len(t), len(nodos), 2)
+#     escalado = [m * 4 for m in masas]
+#
+#     fig, ax = plt.subplots(figsize=(6, 6))
+#     ax.set_xlim(min(x for x, y in nodos) - 5, max(x for x, y in nodos) + 5)
+#     ax.set_ylim(min(y for x, y in nodos) - 5, max(y for x, y in nodos) + 5)
+#     ax.set_aspect('equal')
+#     ax.set_title('Estructura de Barras')
+#     ax.set_xlabel('X')
+#     ax.set_ylabel('Y')
+#     ax.grid(True)
+#
+#     # Conectividades
+#     lineas = [ax.plot([], [], 'k-', lw=1)[0] for _ in conectividades]
+#
+#     # Nodos
+#     puntos = ax.scatter([n[0] for n in nodos], [n[1] for n in nodos], s=escalado, color='blue', label='Nodos')
+#
+#     # Etiquetas
+#     etiquetas = [ax.text(nodos[i][0], nodos[i][1], str(i + 1), fontsize=12, color='red', ha='right')
+#                  for i in range(len(nodos))]
+#
+#     # Texto del tiempo
+#     tiempo_text = ax.text(0.02, 0.95, '', transform=ax.transAxes,
+#                           fontsize=12, color='black', bbox=dict(facecolor='white', alpha=0.7))
+#
+#     # Parches para triángulos
+#     triangulos = []
+#     for a, b, c in orientacion_triangulos:
+#         coords_ini = [nodos[a], nodos[b], nodos[c]]
+#         area = obtener_area_triangulo(a, b, c, nodos)
+#         patch = Polygon(coords_ini, closed=True, facecolor='lightblue', edgecolor='blue', alpha=0.5)
+#         ax.add_patch(patch)
+#         triangulos.append(patch)
+#
+#     def update(frame):
+#         coordenadas = X_t[frame]
+#         x, y = coordenadas[:, 0], coordenadas[:, 1]
+#
+#         # Nodos
+#         puntos.set_offsets(coordenadas)
+#
+#         # Barras
+#         for idx, (i, j, _) in enumerate(conectividades):
+#             lineas[idx].set_data([x[i], x[j]], [y[i], y[j]])
+#
+#         # Etiquetas
+#         for i, etiqueta in enumerate(etiquetas):
+#             etiqueta.set_position((x[i], y[i]))
+#
+#         # Triángulos actualizados
+#         for i, (a, b, c) in enumerate(orientacion_triangulos):
+#             tri_coords = [coordenadas[a], coordenadas[b], coordenadas[c]]
+#             area = obtener_area_triangulo(a, b, c, coordenadas)
+#             triangulos[i].set_xy(tri_coords)
+#             triangulos[i].set_facecolor('lightblue' if area > 0 else 'red')
+#             triangulos[i].set_alpha(0.3 if area > 0 else 1)
+#
+#         # Actualizar texto de tiempo
+#         tiempo_text.set_text(f'Tiempo: {t[frame]:.2f} s')
+#
+#         return lineas + etiquetas + triangulos + [puntos, tiempo_text]
+#
+#     ani = FuncAnimation(fig, update, frames=len(t), interval=intervalo, blit=True)
+#     plt.show()
+
+
+def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, intervalo=4):
     t = solucion.t
     Y = solucion.y
     X_t = Y[:2 * len(nodos), :].T.reshape(len(t), len(nodos), 2)
     escalado = [m * 4 for m in masas]
 
-    fig, ax = plt.subplots(figsize=(6, 6))
-    ax.set_xlim(min(x for x, y in nodos) - 5, max(x for x, y in nodos) + 5)
-    ax.set_ylim(min(y for x, y in nodos) - 5, max(y for x, y in nodos) + 5)
-    ax.set_aspect('equal')
-    ax.set_title('Estructura de Barras')
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.grid(True)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 6))
 
-    # Conectividades
-    lineas = [ax.plot([], [], 'k-', lw=1)[0] for _ in conectividades]
+    # Estructura de barras
+    ax1.set_xlim(min(x for x, y in nodos) - 5, max(x for x, y in nodos) + 5)
+    ax1.set_ylim(min(y for x, y in nodos) - 5, max(y for x, y in nodos) + 5)
+    ax1.set_aspect('equal')
+    ax1.set_title('Estructura de Barras')
+    ax1.set_xlabel('X')
+    ax1.set_ylabel('Y')
+    ax1.grid(True)
 
-    # Nodos
-    puntos = ax.scatter([n[0] for n in nodos], [n[1] for n in nodos], s=escalado, color='blue', label='Nodos')
+    lineas = [ax1.plot([], [], 'k-', lw=1)[0] for _ in conectividades]
 
-    # Etiquetas
-    etiquetas = [ax.text(nodos[i][0], nodos[i][1], str(i + 1), fontsize=12, color='red', ha='right')
+    puntos = ax1.scatter([n[0] for n in nodos], [n[1] for n in nodos], s=escalado, color='blue', label='Nodos')
+
+    etiquetas = [ax1.text(nodos[i][0], nodos[i][1], str(i + 1), fontsize=12, color='red', ha='right')
                  for i in range(len(nodos))]
 
-    # Parches para triángulos
+    tiempo_text = ax1.text(0.02, 0.95, '', transform=ax1.transAxes,
+                           fontsize=12, color='black', bbox=dict(facecolor='white', alpha=0.7))
+
     triangulos = []
     for a, b, c in orientacion_triangulos:
         coords_ini = [nodos[a], nodos[b], nodos[c]]
         area = obtener_area_triangulo(a, b, c, nodos)
         patch = Polygon(coords_ini, closed=True, facecolor='lightblue', edgecolor='blue', alpha=0.5)
-        ax.add_patch(patch)
+        ax1.add_patch(patch)
         triangulos.append(patch)
+
+    # Funcion Peso
+    ax2.set_aspect('auto')
+    ax2.set_title('P(t)')
+    ax2.set_xlabel('t')
+    ax2.set_ylabel('P')
+    ax2.grid(True)
+    ax2.plot(t, P(t), color='black')
+    Pt, = ax2.plot([], [], 'mo', markersize=10)
 
     def update(frame):
         coordenadas = X_t[frame]
@@ -66,24 +146,27 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, inter
             area = obtener_area_triangulo(a, b, c, coordenadas)
             triangulos[i].set_xy(tri_coords)
             triangulos[i].set_facecolor('lightblue' if area > 0 else 'red')
-            triangulos[i].set_alpha(0.6 if area > 0 else 0.7)
+            triangulos[i].set_alpha(0.3 if area > 0 else 1)
 
-        return lineas + etiquetas + triangulos + [puntos]
+        # Actualizar texto de tiempo
+        tiempo_text.set_text(f'Tiempo: {t[frame]:.2f} s')
 
-    duracion_ms = solucion.t[-1] * 1000  # convertir segundos a milisegundos
-    intervalo_ajustado = duracion_ms / len(solucion.t)
+        # Particula
+        Pt.set_data([t[frame]], [P(t[frame])])
 
-    ani = FuncAnimation(fig, update, frames=len(solucion.t), interval=12, blit=True)
+        return lineas + etiquetas + triangulos + [puntos, tiempo_text, Pt]
+
+    ani = FuncAnimation(fig, update, frames=len(t), interval=intervalo, blit=True)
+    plt.tight_layout()
     plt.show()
 
-
-def obtener_masas(nodos, conectividades):
+def obtener_masas(nodos, conectividades, rho):
     masas = np.zeros(len(nodos))
 
     for i in range(len(nodos)):
         for ni, nj, r in conectividades:
             if (ni == i or nj == i):
-                masas[i] += (np.linalg.norm(np.array(nodos[ni]) - np.array(nodos[nj])) / 2)
+                masas[i] += ((np.linalg.norm(np.array(nodos[ni]) - np.array(nodos[nj])) * rho ) / 2)
 
     return masas.tolist()
 
@@ -145,17 +228,17 @@ conectividades = [(0, 4, 3),
                   (6, 7, 9),
                   (4, 7, 9),
                   (7, 2, 0.3)]
-masas = obtener_masas(nodos, conectividades)
+masas = obtener_masas(nodos, conectividades, rho)
 orientacion_triangulos = obtener_orientacion_triangulos(nodos, conectividades)
 # posiciones iniciales + velocidades iniciales
 Y0 = [coordenadas for nodo in nodos for coordenadas in nodo] + [0] * (2 * len(nodos))
 intervalo = (0, 50)
 t = np.linspace(*intervalo, 1000)
 def P(t):
-    return 0.1
+    return 0.1 + 0*t
 # def P(t):
 #     A = 1
-#     f = 2
+#     f = 0.04
 #     phi = 0
 #
 #     return A * np.sin(2 * np.pi * f * t + phi)
@@ -186,7 +269,7 @@ def sistema_ecuaciones(t, Y):
         A[j] -= F_ij / masas[j]
 
     # Aplica Peso
-    A[5][1] -= P(t)
+    A[5][1] -= P(t) / masas[5]
 
     # Condiciones de borde
     V[0] = [0, 0]
