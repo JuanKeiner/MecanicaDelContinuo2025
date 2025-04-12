@@ -234,7 +234,7 @@ intervalo = (0, 50)
 t = np.linspace(*intervalo, 1000)
 nodo_b = 7  # nodo 8
 barra_a = 9  # barra 10
-pequeñas = True
+pequeñas = False
 
 
 def P(t):
@@ -294,10 +294,18 @@ def sistema_ecuaciones(t, Y):
     A[5][1] -= P(t) / masas[5]
 
     # Condiciones de borde
+    # Nodo 1 no se mueve en x ni en y por lo tanto velocidad 0 en x e y
     V[0] = [0, 0]
+    # Nodo 2 si se mueve en x y no en y por lo tanto velocidad en y 0 y en x es la calculada
     V[1][1] = 0
+    # Nodo 3 no se mueve en x ni en y por lo tanto velocidad 0 en x e y
+    V[2] = [0, 0]
+    # Nodo 1, como la velocidad es 0, la aceleracion es 0 en x y en y
     A[0] = [0, 0]
+    # Nodo 2. como la velociad en y es o, la aceleracion en y es 0. En x mantiene la calculada
     A[1][1] = 0
+    # Nodo 3 como la velocidad es 0, la aceleracion es 0 en x y en y
+    A[2] = [0, 0]
 
     return np.concatenate((V, A)).flatten()
 
