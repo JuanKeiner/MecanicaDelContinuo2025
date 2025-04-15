@@ -6,23 +6,25 @@ from itertools import permutations
 from scipy.integrate import solve_ivp
 from matplotlib.animation import FuncAnimation
 from matplotlib.patches import Polygon
+from sympy import primenu
 
 matplotlib.use('TkAgg')
 
 
 # FUNCIONES
-def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, intervalo=0):
+def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, intervalo=0):
     t = solucion.t
     Y = solucion.y
     X_t = Y[:2 * len(nodos), :].T.reshape(len(t), len(nodos), 2)
-    escalado = [m * 8 for m in masas]
+
+    escalado = [m * 80 for m in masas]
 
     fig, axes = plt.subplots(2, 3, figsize=(12, 8))
     ax1, ax2, ax3, ax4, ax5, ax6 = axes.ravel()
 
     # Estructura de barras
     ax1.set_xlim(min(x for x, y in nodos) - 5, max(x for x, y in nodos) + 5)
-    ax1.set_ylim(min(y for x, y in nodos) - 5, max(y for x, y in nodos) + 5)
+    ax1.set_ylim(min(y for x, y in nodos) - 12, max(y for x, y in nodos) + 5)
     ax1.set_aspect('equal')
     ax1.set_title(f'Estructura de Barras {"Pequeñas" if pequeñas else "Grandes"} Deformaciones')
     ax1.set_xlabel('X')
@@ -97,13 +99,20 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, inter
     xyt_b, = ax5.plot([], [], 'mo', markersize=10)
 
     # Evolucion barra a
+
+    # F_x = [f[0] for f in F_b]
+    # # F_y = [f[1] for f in F_b]
+    # #
+    # print(len(F_x))
+    # print(len(t))
+
     ax6.set_aspect('auto')
     ax6.set_title(f'Tensión Barra {barra_a}')
     ax6.set_xlabel('x')
     ax6.set_ylabel('y')
     ax6.grid(True)
 
-    # ax6.plot(xt, yt, color='black')
+    #ax6.plot(t, F_x, color='black')
 
     def update(frame):
         coordenadas = X_t[frame]
@@ -141,7 +150,7 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, inter
 
         return lineas + etiquetas + triangulos + [puntos, tiempo_text, Pt, xt_b, yt_b, xyt_b]
 
-    ani = FuncAnimation(fig, update, frames=len(t), interval=intervalo, blit=True, repeat=False)
+    ani = FuncAnimation(fig, update, frames=range(0, len(t), 1), interval=intervalo, blit=True, repeat=False)
     plt.tight_layout()
     plt.show()
 
@@ -152,7 +161,7 @@ def obtener_masas(nodos, conectividades, rho):
     for i in range(len(nodos)):
         for ni, nj in conectividades:
             if (ni == i or nj == i):
-                masas[i] += ((np.linalg.norm(np.array(nodos[ni]) - np.array(nodos[nj])) * rho) / 2)
+                masas[i] += ((np.linalg.norm(np.array(nodos[ni]) - np.array(nodos[nj])) * rho) / 2) / 20
 
     return masas.tolist()
 
@@ -193,11 +202,127 @@ def obtener_rigidez(nodos, conectividades, E, A):
     k = []
 
     for i, j in conectividades:
-        k_ij = E * A / (np.linalg.norm(np.array(nodos[i]) - np.array(nodos[j])))
+        L = (np.linalg.norm(np.array(nodos[i]) - np.array(nodos[j])))
+        k_ij = E * A / L
         k.append(k_ij)
 
     return k
 
+
+def obtener_tiempo_desestabilizacion(solucion, orientacion_triangulos, nodos):
+    T = solucion.t
+    Y = solucion.y
+    X_t = Y[:2 * len(nodos), :].T.reshape(len(T), len(nodos), 2)
+
+    for i in range(len(T)):
+        coordenadas = X_t[i]
+
+        for a, b, c in orientacion_triangulos:
+            area = obtener_area_triangulo(a, b, c, coordenadas)
+
+            if area < 0:
+                return T[i]
+
+    return -1
+
+
+def P(t):
+    return 0.1 + 0 * t
+
+
+# def P(t):
+#     A = 0.5
+#     f = 0.05
+#     phi = 0
+#
+#     return A * np.sin(2 * np.pi * f * t + phi)
+
+# PROCESO
+
+
+def fuerza_grandes_deformaciones(x_i, x_j, x0_i, x0_j, k_ij):
+    norm_0 = np.linalg.norm(x0_j - x0_i)
+    norm = np.linalg.norm(x_j - x_i)
+
+    return k_ij * (1 - (norm_0 / norm)) * (x_j - x_i)
+
+
+def fuerza_pequeñas_deformaciones(x_i, x_j, x0_i, x0_j, k_ij):
+    norm_0 = np.linalg.norm(x0_j - x0_i)
+    norm = np.linalg.norm(x_j - x_i)
+
+    return k_ij * ((norm / norm_0) - 1) * (x0_j - x0_i)
+
+# def fuerza_pequeñas_deformaciones(x_i, x_j, x0_i, x0_j, k_ij):
+#     norm_0 = np.dot( (x_j - x_i) - (x0_j - x0_i), x0_j - x0_i)
+#     norm = np.linalg.norm(x0_j - x0_i)**2
+#
+#     return k_ij * (norm_0 / norm) * (x0_j - x0_i)
+#
+# def fuerza_grandes_deformaciones(x_i, x_j, x0_i, x0_j, k_ij):
+#     norm_0 = np.linalg.norm(x0_j - x0_i)
+#     norm = np.linalg.norm(x_j - x_i)
+#
+#     return k_ij * ((norm / norm_0) - 1) * (x_j - x_i) / norm * norm_0
+
+
+def obtener_fuerzas_barra(solucion, nodos, barra, conectividades):
+    T = solucion.t
+    Y = solucion.y
+    X_t = Y[:2 * len(nodos), :].T.reshape(len(T), len(nodos), 2)
+    nodo_a = conectividades[barra][0]
+    nodo_b = conectividades[barra][1]
+
+    for i in range(len(T)):
+        coordenadas = X_t[i]
+
+        # print(coordenadas)
+        # exit()
+
+
+def sistema_ecuaciones(t, Y):
+    Y = np.array(Y)
+    X = Y[:len(Y) // 2].reshape(-1, 2)
+    V = Y[len(Y) // 2:].reshape(-1, 2)
+    A = np.zeros_like(X)
+
+    # Calcula la fuerza neta en cada nodo
+    for index, (i, j) in enumerate(conectividades):
+        if (pequeñas):
+            F_ij = fuerza_pequeñas_deformaciones(X[i], X[j], np.array(nodos[i]), np.array(nodos[j]), K[index])
+
+            # if (barra_a == index):
+            #     F_b.append(F_ij)
+
+            A[i] += F_ij / masas[i]
+            A[j] -= F_ij / masas[j]
+        else:
+            F_ij = fuerza_grandes_deformaciones(X[i], X[j], np.array(nodos[i]), np.array(nodos[j]), K[index])
+
+            # if (barra_a == index):
+            #     F_b.append(F_ij)
+
+            A[i] += F_ij / masas[i]
+            A[j] -= F_ij / masas[j]
+
+    # Aplica Peso
+    A[5][1] -= P(t) / masas[5]
+
+    # Condiciones de borde
+    # Nodo 1 no se mueve en x ni en y por lo tanto velocidad 0 en x e y
+    V[0] = [0, 0]
+    # Nodo 2 si se mueve en x y no en y por lo tanto velocidad en y 0 y en x es la calculada
+    V[1][1] = 0
+    # Nodo 3 no se mueve en x ni en y por lo tanto velocidad 0 en x e y
+    V[2] = [0, 0]
+    # Nodo 1, como la velocidad es 0, la aceleracion es 0 en x y en y
+    A[0] = [0, 0]
+    # Nodo 2. como la velociad en y es o, la aceleracion en y es 0. En x mantiene la calculada
+    A[1][1] = 0
+    # Nodo 3 como la velocidad es 0, la aceleracion es 0 en x y en y
+    A[2] = [0, 0]
+
+    return np.concatenate((V, A)).flatten()
 
 # DATOS
 rho = 0.5
@@ -231,84 +356,23 @@ K = obtener_rigidez(nodos, conectividades, E, A)
 # posiciones iniciales + velocidades iniciales
 Y0 = [coordenadas for nodo in nodos for coordenadas in nodo] + [0] * (2 * len(nodos))
 intervalo = (0, 50)
-t = np.linspace(*intervalo, 1000)
+t = np.linspace(*intervalo, 87)
 nodo_b = 7  # nodo 8
 barra_a = 9  # barra 10
 pequeñas = False
+F_b = []
 
 
-def P(t):
-    return 0.1 + 0 * t
+# SOLUCION
+Y = solve_ivp(sistema_ecuaciones, intervalo, Y0)
+t_desestabilizacion = obtener_tiempo_desestabilizacion(Y, orientacion_triangulos, nodos)
+
+print(f'Tiempo de desestabilización: {t_desestabilizacion}')
+
+# obtener_fuerzas_barra(Y, nodos, barra_a, conectividades)
+
+animar(Y, nodos, conectividades, masas, orientacion_triangulos, F_b)
 
 
-# def P(t):
-#     A = 0.5
-#     f = 0.05
-#     phi = 0
-#
-#     return A * np.sin(2 * np.pi * f * t + phi)
-
-# PROCESO
 
 
-def fuerza_pequeñas_deformaciones(x_i, x_j, x0_i, x0_j, k_ij):
-    norm_0 = np.linalg.norm(x0_j - x0_i)
-    norm = np.linalg.norm(x_j - x_i)
-
-    return k_ij * (1 - (norm_0 / norm)) * (x_j - x_i)
-
-
-def fuerza_grandes_deformaciones(x_i, x_j, x0_i, x0_j, k_ij):
-    norm_0 = np.linalg.norm(x0_j - x0_i)
-    norm = np.linalg.norm(x_j - x_i)
-
-    return k_ij * ((norm / norm_0) - 1) * (x0_j - x0_i)
-
-
-def sistema_ecuaciones(t, Y):
-    Y = np.array(Y)
-    X = Y[:len(Y) // 2].reshape(-1, 2)
-    V = Y[len(Y) // 2:].reshape(-1, 2)
-    A = np.zeros_like(X)
-    F = []
-
-    a = 0
-    # Calcula la fuerza neta en cada nodo
-    for i, j in conectividades:
-        if (pequeñas):
-            F_ij = fuerza_pequeñas_deformaciones(X[i], X[j], np.array(nodos[i]), np.array(nodos[j]), K[a])
-            F.append(F_ij)
-
-            A[i] += F_ij / masas[i]
-            A[j] -= F_ij / masas[j]
-        else:
-            F_ij = fuerza_grandes_deformaciones(X[i], X[j], np.array(nodos[i]), np.array(nodos[j]), K[a])
-            F.append(F_ij)
-
-            A[i] += F_ij / masas[i]
-            A[j] -= F_ij / masas[j]
-
-        a += 1
-
-    # Aplica Peso
-    A[5][1] -= P(t) / masas[5]
-
-    # Condiciones de borde
-    # Nodo 1 no se mueve en x ni en y por lo tanto velocidad 0 en x e y
-    V[0] = [0, 0]
-    # Nodo 2 si se mueve en x y no en y por lo tanto velocidad en y 0 y en x es la calculada
-    V[1][1] = 0
-    # Nodo 3 no se mueve en x ni en y por lo tanto velocidad 0 en x e y
-    V[2] = [0, 0]
-    # Nodo 1, como la velocidad es 0, la aceleracion es 0 en x y en y
-    A[0] = [0, 0]
-    # Nodo 2. como la velociad en y es o, la aceleracion en y es 0. En x mantiene la calculada
-    A[1][1] = 0
-    # Nodo 3 como la velocidad es 0, la aceleracion es 0 en x y en y
-    A[2] = [0, 0]
-
-    return np.concatenate((V, A)).flatten()
-
-
-Y = solve_ivp(sistema_ecuaciones, intervalo, Y0, t_eval=t)
-animar(Y, nodos, conectividades, masas, orientacion_triangulos)
