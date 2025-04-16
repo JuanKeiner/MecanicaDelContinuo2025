@@ -1,3 +1,5 @@
+import time
+
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
@@ -19,16 +21,16 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
 
     escalado = [m * 80 for m in masas]
 
-    fig, axes = plt.subplots(2, 3, figsize=(12, 8))
+    fig, axes = plt.subplots(2, 3, figsize=(10, 6))
     ax1, ax2, ax3, ax4, ax5, ax6 = axes.ravel()
 
     # Estructura de barras
-    ax1.set_xlim(min(x for x, y in nodos) - 5, max(x for x, y in nodos) + 5)
-    ax1.set_ylim(min(y for x, y in nodos) - 12, max(y for x, y in nodos) + 5)
+    ax1.set_xlim(min(x for x, y in nodos) - 7, max(x for x, y in nodos) + 7)
+    ax1.set_ylim(min(y for x, y in nodos) - 15, max(y for x, y in nodos) + 7)
     ax1.set_aspect('equal')
     ax1.set_title(f'Estructura de Barras {"Pequeñas" if pequeñas else "Grandes"} Deformaciones')
-    ax1.set_xlabel('X')
-    ax1.set_ylabel('Y')
+    ax1.set_xlabel('x')
+    ax1.set_ylabel('t')
     ax1.grid(True)
 
     colores_barra = ['black'] * len(conectividades)
@@ -99,20 +101,13 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
     xyt_b, = ax5.plot([], [], 'mo', markersize=10)
 
     # Evolucion barra a
-
-    # F_x = [f[0] for f in F_b]
-    # # F_y = [f[1] for f in F_b]
-    # #
-    # print(len(F_x))
-    # print(len(t))
-
     ax6.set_aspect('auto')
     ax6.set_title(f'Tensión Barra {barra_a}')
-    ax6.set_xlabel('x')
-    ax6.set_ylabel('y')
+    ax6.set_xlabel('t')
+    ax6.set_ylabel('||F||/A')
     ax6.grid(True)
-
-    #ax6.plot(t, F_x, color='black')
+    ax6.plot(t, F_b, color='black')
+    f_b, = ax6.plot([], [], 'mo', markersize=10)
 
     def update(frame):
         coordenadas = X_t[frame]
@@ -148,9 +143,12 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
         yt_b.set_data([t[frame]], [X_t[frame][nodo_b][1]])
         xyt_b.set_data([X_t[frame][nodo_b][0]], [X_t[frame][nodo_b][1]])
 
-        return lineas + etiquetas + triangulos + [puntos, tiempo_text, Pt, xt_b, yt_b, xyt_b]
+        # Barra a
+        f_b.set_data([t[frame]], [F_b[frame]])
 
-    ani = FuncAnimation(fig, update, frames=range(0, len(t), 1), interval=intervalo, blit=True, repeat=False)
+        return lineas + etiquetas + triangulos + [puntos, tiempo_text, Pt, xt_b, yt_b, xyt_b, f_b]
+
+    ani = FuncAnimation(fig, update, frames=len(t), interval=intervalo, blit=True, repeat=False)
     plt.tight_layout()
     plt.show()
 
@@ -266,18 +264,35 @@ def fuerza_pequeñas_deformaciones(x_i, x_j, x0_i, x0_j, k_ij):
 #     return k_ij * ((norm / norm_0) - 1) * (x_j - x_i) / norm * norm_0
 
 
-def obtener_fuerzas_barra(solucion, nodos, barra, conectividades):
+def obtener_fuerzas_barra(solucion, nodos, barra, conectividades, K, A):
     T = solucion.t
     Y = solucion.y
     X_t = Y[:2 * len(nodos), :].T.reshape(len(T), len(nodos), 2)
     nodo_a = conectividades[barra][0]
     nodo_b = conectividades[barra][1]
 
+    x0_i = nodos[nodo_a]
+    x0_j = nodos[nodo_b]
+
+    F = []
+
     for i in range(len(T)):
         coordenadas = X_t[i]
 
-        # print(coordenadas)
-        # exit()
+        x_i = coordenadas[nodo_a]
+        x_j = coordenadas[nodo_b]
+
+        F_ij = [0, 0]
+
+        if (pequeñas):
+            F_ij = fuerza_pequeñas_deformaciones(x_i, x_j, np.array(x0_i), np.array(x0_j), K[barra])
+        else:
+            F_ij = fuerza_grandes_deformaciones(x_i, x_j, np.array(x0_i), np.array(x0_j), K[barra])
+
+        F.append(np.linalg.norm(F_ij)/A)
+
+    return F
+
 
 
 def sistema_ecuaciones(t, Y):
@@ -359,17 +374,15 @@ intervalo = (0, 50)
 t = np.linspace(*intervalo, 87)
 nodo_b = 7  # nodo 8
 barra_a = 9  # barra 10
-pequeñas = False
-F_b = []
+pequeñas = True
 
 
 # SOLUCION
-Y = solve_ivp(sistema_ecuaciones, intervalo, Y0)
+Y = solve_ivp(sistema_ecuaciones, intervalo, Y0, method='RK23')
 t_desestabilizacion = obtener_tiempo_desestabilizacion(Y, orientacion_triangulos, nodos)
+F_b = obtener_fuerzas_barra(Y, nodos, barra_a, conectividades, K, A)
 
 print(f'Tiempo de desestabilización: {t_desestabilizacion}')
-
-# obtener_fuerzas_barra(Y, nodos, barra_a, conectividades)
 
 animar(Y, nodos, conectividades, masas, orientacion_triangulos, F_b)
 
