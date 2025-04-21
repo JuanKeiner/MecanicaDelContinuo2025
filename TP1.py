@@ -251,6 +251,7 @@ def fuerza_pequeñas_deformaciones(x_i, x_j, x0_i, x0_j, k_ij):
 
     return k_ij * ((norm / norm_0) - 1) * (x0_j - x0_i)
 
+
 # def fuerza_pequeñas_deformaciones(x_i, x_j, x0_i, x0_j, k_ij):
 #     norm_0 = np.dot( (x_j - x_i) - (x0_j - x0_i), x0_j - x0_i)
 #     norm = np.linalg.norm(x0_j - x0_i)**2
@@ -293,6 +294,34 @@ def obtener_fuerzas_barra(solucion, nodos, barra, conectividades, K, A):
 
     return F
 
+
+def obterner_max_desplazamiento(solucion, nodos, t_final):
+    T = solucion.t
+    Y = solucion.y
+    X_t = Y[:2 * len(nodos), :].T.reshape(len(T), len(nodos), 2)
+
+    t_max = 0
+    d_max = 0
+    node = 0
+
+    for i in range(len(T)):
+        coordenadas = X_t[i]
+
+        for j, nodo in enumerate(nodos):
+
+            norm = np.linalg.norm(np.array(nodo) - coordenadas[j])
+
+            if norm > d_max:
+                d_max = norm
+                t_max = T[i]
+                node = j
+
+        if T[i] == t_final:
+            break
+
+    print(f'Desplazamiento maximo: {d_max}')
+    print(f'Tiempo de ocurrencia: {t_max}')
+    print(f'Nodo: {node + 1}')
 
 
 def sistema_ecuaciones(t, Y):
@@ -374,13 +403,14 @@ intervalo = (0, 50)
 t = np.linspace(*intervalo, 87)
 nodo_b = 7  # nodo 8
 barra_a = 9  # barra 10
-pequeñas = True
+pequeñas = False
 
 
 # SOLUCION
 Y = solve_ivp(sistema_ecuaciones, intervalo, Y0, method='RK23')
 t_desestabilizacion = obtener_tiempo_desestabilizacion(Y, orientacion_triangulos, nodos)
 F_b = obtener_fuerzas_barra(Y, nodos, barra_a, conectividades, K, A)
+obterner_max_desplazamiento(Y, nodos, (50 if t_desestabilizacion == -1 else t_desestabilizacion))
 
 print(f'Tiempo de desestabilización: {t_desestabilizacion}')
 
