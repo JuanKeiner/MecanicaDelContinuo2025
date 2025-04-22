@@ -61,7 +61,7 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
     ax2.set_xlabel('t')
     ax2.set_ylabel('P')
     ax2.grid(True)
-    ax2.plot(t, P(t), color='black')
+    ax2.plot(t, P(t, carga_sinusoidal), color='black')
     Pt, = ax2.plot([], [], 'mo', markersize=10)
 
     # Evolucion nodo b
@@ -74,7 +74,7 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
         xt.append(X_t[ii][nodo_b][0])
 
     ax3.set_aspect('auto')
-    ax3.set_title(f'Nodo {nodo_b + 1} t vs x')
+    ax3.set_title(f'Nodo {nodo_b + 1} posición en x')
     ax3.set_xlabel('t')
     ax3.set_ylabel('x')
     ax3.grid(True)
@@ -85,7 +85,7 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
         yt.append(X_t[ii][nodo_b][1])
 
     ax4.set_aspect('auto')
-    ax4.set_title(f'Nodo {nodo_b + 1} t vs y')
+    ax4.set_title(f'Nodo {nodo_b + 1} posición en y')
     ax4.set_xlabel('t')
     ax4.set_ylabel('y')
     ax4.grid(True)
@@ -102,7 +102,7 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
 
     # Evolucion barra a
     ax6.set_aspect('auto')
-    ax6.set_title(f'Tensión Barra {barra_a}')
+    ax6.set_title(f'Tensión Barra {barra_a + 1}')
     ax6.set_xlabel('t')
     ax6.set_ylabel('||F||/A')
     ax6.grid(True)
@@ -136,7 +136,7 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
         tiempo_text.set_text(f'Tiempo: {t[frame]:.2f} s')
 
         # Particula
-        Pt.set_data([t[frame]], [P(t[frame])])
+        Pt.set_data([t[frame]], [P(t[frame], carga_sinusoidal)])
 
         # Nodo b
         xt_b.set_data([t[frame]], [X_t[frame][nodo_b][0]])
@@ -223,19 +223,15 @@ def obtener_tiempo_desestabilizacion(solucion, orientacion_triangulos, nodos):
 
     return -1
 
-
-def P(t):
-    return 0.1 + 0 * t
-
-
-# def P(t):
-#     A = 0.5
-#     f = 0.05
-#     phi = 0
-#
-#     return A * np.sin(2 * np.pi * f * t + phi)
-
-# PROCESO
+def P(t, sinusoidal = False):
+    
+    if sinusoidal:
+        A = 0.1
+        f = 0.05
+        phi = 0
+        return A * np.sin(-2 * np.pi * f * t + phi)
+    else:
+        return 0.1 + t * 0
 
 
 def fuerza_grandes_deformaciones(x_i, x_j, x0_i, x0_j, k_ij):
@@ -250,19 +246,6 @@ def fuerza_pequeñas_deformaciones(x_i, x_j, x0_i, x0_j, k_ij):
     norm = np.linalg.norm(x_j - x_i)
 
     return k_ij * ((norm / norm_0) - 1) * (x0_j - x0_i)
-
-
-# def fuerza_pequeñas_deformaciones(x_i, x_j, x0_i, x0_j, k_ij):
-#     norm_0 = np.dot( (x_j - x_i) - (x0_j - x0_i), x0_j - x0_i)
-#     norm = np.linalg.norm(x0_j - x0_i)**2
-#
-#     return k_ij * (norm_0 / norm) * (x0_j - x0_i)
-#
-# def fuerza_grandes_deformaciones(x_i, x_j, x0_i, x0_j, k_ij):
-#     norm_0 = np.linalg.norm(x0_j - x0_i)
-#     norm = np.linalg.norm(x_j - x_i)
-#
-#     return k_ij * ((norm / norm_0) - 1) * (x_j - x_i) / norm * norm_0
 
 
 def obtener_fuerzas_barra(solucion, nodos, barra, conectividades, K, A):
@@ -350,7 +333,7 @@ def sistema_ecuaciones(t, Y):
             A[j] -= F_ij / masas[j]
 
     # Aplica Peso
-    A[5][1] -= P(t) / masas[5]
+    A[5][1] -= P(t, carga_sinusoidal) / masas[5]
 
     # Condiciones de borde
     # Nodo 1 no se mueve en x ni en y por lo tanto velocidad 0 en x e y
@@ -404,6 +387,7 @@ t = np.linspace(*intervalo, 87)
 nodo_b = 7  # nodo 8
 barra_a = 9  # barra 10
 pequeñas = False
+carga_sinusoidal = False
 
 
 # SOLUCION
