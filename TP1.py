@@ -22,14 +22,17 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
     escalado = [m * 80 for m in masas]
 
     fig, axes = plt.subplots(2, 3, figsize=(10, 6))
-    manager = plt.get_current_fig_manager()
-    try:
-        manager.window.showMaximized()
-    except AttributeError:
+    # Poner en True para pantalla completa
+    if False:
+        manager = plt.get_current_fig_manager()
         try:
-            manager.window.state('zoomed')  # Para TkAgg
+            manager.window.showMaximized()
         except AttributeError:
-            pass  # Si no se puede, no pasa nada
+            try:
+                manager.window.state('zoomed')  # Para TkAgg
+            except AttributeError:
+                pass  # Si no se puede, no pasa nada
+    
     ax1, ax2, ax3, ax4, ax5, ax6 = axes.ravel()
 
     # Estructura de barras
