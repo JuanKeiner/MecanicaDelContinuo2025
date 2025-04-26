@@ -14,7 +14,7 @@ matplotlib.use('TkAgg')
 
 
 # FUNCIONES
-def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, intervalo=0):
+def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, intervalo=100):
     t = solucion.t
     Y = solucion.y
     X_t = Y[:2 * len(nodos), :].T.reshape(len(t), len(nodos), 2)
@@ -22,6 +22,14 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
     escalado = [m * 80 for m in masas]
 
     fig, axes = plt.subplots(2, 3, figsize=(10, 6))
+    manager = plt.get_current_fig_manager()
+    try:
+        manager.window.showMaximized()
+    except AttributeError:
+        try:
+            manager.window.state('zoomed')  # Para TkAgg
+        except AttributeError:
+            pass  # Si no se puede, no pasa nada
     ax1, ax2, ax3, ax4, ax5, ax6 = axes.ravel()
 
     # Estructura de barras
@@ -34,7 +42,13 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
     ax1.grid(True)
 
     colores_barra = ['black'] * len(conectividades)
+    # Calculos para barra especial a
     colores_barra[barra_a] = 'magenta'
+    i, j = conectividades[barra_a]
+    x_barra_a_inicial_i, y_barra_a_inicial_i = nodos[i]
+    x_barra_a_inicial_j, y_barra_a_inicial_j = nodos[j]
+    distancia_inicial_barra_a = np.hypot(x_barra_a_inicial_j - x_barra_a_inicial_i, y_barra_a_inicial_j - y_barra_a_inicial_i)
+    
     lineas = [ax1.plot([], [], '-k', lw=1.5, color=colores_barra[i])[0] for i in range(len(conectividades))]
 
     colores = ['blue'] * len(nodos)
@@ -119,6 +133,22 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
         # Barras
         for idx, (i, j) in enumerate(conectividades):
             lineas[idx].set_data([x[i], x[j]], [y[i], y[j]])
+        
+        # Cambiar color de la barra especial (barra_a) según distancia
+        i_barra_a, j_barra_a = conectividades[barra_a]
+        dist_actual = np.hypot(x[j_barra_a] - x[i_barra_a], y[j_barra_a] - y[i_barra_a])
+        delta = dist_actual - distancia_inicial_barra_a  
+        delta_normalizado = np.clip(delta, -1, 1)
+        if delta_normalizado >= 0:
+            r = 0
+            g = int(255 * delta_normalizado) 
+            b = 0
+        else:
+            r = int(255 * (-delta_normalizado)) 
+            g = 0
+            b = 0
+        color_hex = f'#{r:02x}{g:02x}{b:02x}'
+        lineas[barra_a].set_color(color_hex)
 
         # Etiquetas
         for i, etiqueta in enumerate(etiquetas):
@@ -272,8 +302,10 @@ def obtener_fuerzas_barra(solucion, nodos, barra, conectividades, K, A):
             F_ij = fuerza_pequeñas_deformaciones(x_i, x_j, np.array(x0_i), np.array(x0_j), K[barra])
         else:
             F_ij = fuerza_grandes_deformaciones(x_i, x_j, np.array(x0_i), np.array(x0_j), K[barra])
-
-        F.append(np.linalg.norm(F_ij)/A)
+            
+        # print(f'Barra con coordenadas {x_i} y {x_j}. Fuerza: {F_ij}. Producto: {np.dot((x_j - x_i), F_ij)}')
+        F_ij_signed = np.linalg.norm(F_ij) * np.sign(np.dot((x_i - x_j), F_ij))
+        F.append(F_ij_signed/A)
 
     return F
 
@@ -387,7 +419,7 @@ t = np.linspace(*intervalo, 87)
 nodo_b = 7  # nodo 8
 barra_a = 9  # barra 10
 pequeñas = False
-carga_sinusoidal = False
+carga_sinusoidal = True
 
 
 # SOLUCION
