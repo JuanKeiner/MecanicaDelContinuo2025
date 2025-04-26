@@ -41,7 +41,7 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
     ax1.set_aspect('equal')
     ax1.set_title(f'Estructura de Barras {"Pequeñas" if pequeñas else "Grandes"} Deformaciones')
     ax1.set_xlabel('x')
-    ax1.set_ylabel('t')
+    ax1.set_ylabel('y')
     ax1.grid(True)
 
     colores_barra = ['black'] * len(conectividades)
