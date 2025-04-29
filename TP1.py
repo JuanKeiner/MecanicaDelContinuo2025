@@ -14,7 +14,7 @@ matplotlib.use('TkAgg')
 
 
 # FUNCIONES
-def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, intervalo=100):
+def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, intervalo=0):
     t = solucion.t
     Y = solucion.y
     X_t = Y[:2 * len(nodos), :].T.reshape(len(t), len(nodos), 2)
@@ -39,7 +39,7 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
     ax1.set_xlim(min(x for x, y in nodos) - 7, max(x for x, y in nodos) + 7)
     ax1.set_ylim(min(y for x, y in nodos) - 15, max(y for x, y in nodos) + 7)
     ax1.set_aspect('equal')
-    ax1.set_title(f'Estructura de Barras {"Pequeñas" if pequeñas else "Grandes"} Deformaciones')
+    ax1.set_title(f'Estructura de Barras {"Pequeñas" if pequeñas_deformaciones else "Grandes"} Deformaciones')
     ax1.set_xlabel('x')
     ax1.set_ylabel('y')
     ax1.grid(True)
@@ -121,7 +121,7 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
     ax6.set_aspect('auto')
     ax6.set_title(f'Tensión Barra {barra_a + 1}')
     ax6.set_xlabel('t')
-    ax6.set_ylabel('||F||/A')
+    ax6.set_ylabel('T')
     ax6.grid(True)
     ax6.plot(t, F_b, color='black')
     f_b, = ax6.plot([], [], 'mo', markersize=10)
@@ -301,7 +301,7 @@ def obtener_fuerzas_barra(solucion, nodos, barra, conectividades, K, A):
 
         F_ij = [0, 0]
 
-        if (pequeñas):
+        if (pequeñas_deformaciones):
             F_ij = fuerza_pequeñas_deformaciones(x_i, x_j, np.array(x0_i), np.array(x0_j), K[barra])
         else:
             F_ij = fuerza_grandes_deformaciones(x_i, x_j, np.array(x0_i), np.array(x0_j), K[barra])
@@ -350,7 +350,7 @@ def sistema_ecuaciones(t, Y):
 
     # Calcula la fuerza neta en cada nodo
     for index, (i, j) in enumerate(conectividades):
-        if (pequeñas):
+        if (pequeñas_deformaciones):
             F_ij = fuerza_pequeñas_deformaciones(X[i], X[j], np.array(nodos[i]), np.array(nodos[j]), K[index])
 
             # if (barra_a == index):
@@ -421,8 +421,8 @@ intervalo = (0, 50)
 t = np.linspace(*intervalo, 87)
 nodo_b = 7  # nodo 8
 barra_a = 9  # barra 10
-pequeñas = False
-carga_sinusoidal = True
+pequeñas_deformaciones = False
+carga_sinusoidal = False
 
 
 # SOLUCION
