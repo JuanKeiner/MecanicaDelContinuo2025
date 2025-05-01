@@ -21,7 +21,7 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
 
     escalado = [m * 80 for m in masas]
 
-    fig, axes = plt.subplots(2, 3, figsize=(10, 6))
+    fig, axes = plt.subplots(2, 3, figsize=(16, 10))
     # Poner en True para pantalla completa
     if False:
         manager = plt.get_current_fig_manager()
@@ -39,7 +39,7 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
     ax1.set_xlim(min(x for x, y in nodos) - 7, max(x for x, y in nodos) + 7)
     ax1.set_ylim(min(y for x, y in nodos) - 15, max(y for x, y in nodos) + 7)
     ax1.set_aspect('equal')
-    ax1.set_title(f'Estructura de Barras {"Pequeñas" if pequeñas_deformaciones else "Grandes"} Deformaciones')
+    ax1.set_title(f'Estructura de Barras {"Pequeñas" if pequeñas_deformaciones else "Grandes"} Deformaciones - {"Carga constante" if not carga_sinusoidal else "Carga sinusoidal"} ')
     ax1.set_xlabel('x')
     ax1.set_ylabel('y')
     ax1.grid(True)
@@ -182,6 +182,11 @@ def animar(solucion, nodos, conectividades, masas, orientacion_triangulos, F_b, 
         return lineas + etiquetas + triangulos + [puntos, tiempo_text, Pt, xt_b, yt_b, xyt_b, f_b]
 
     ani = FuncAnimation(fig, update, frames=len(t), interval=intervalo, blit=True, repeat=False)
+    if generar_gif:
+        tipo_deformacion = "Pequeñas deformaciones" if pequeñas_deformaciones else "Grandes deformaciones"
+        tipo_carga = "Carga sinusoidal" if carga_sinusoidal else "Carga constante"
+        nombre_archivo = f'{tipo_deformacion}-{tipo_carga}.gif'
+        ani.save(nombre_archivo, writer='pillow', fps=20)
     plt.tight_layout()
     plt.show()
 
@@ -423,6 +428,7 @@ nodo_b = 7  # nodo 8
 barra_a = 9  # barra 10
 pequeñas_deformaciones = False
 carga_sinusoidal = False
+generar_gif = False
 
 
 # SOLUCION
